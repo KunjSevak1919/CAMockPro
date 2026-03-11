@@ -1,0 +1,211 @@
+// MockCA.ai — Prisma Schema
+// Supabase PostgreSQL via Prisma ORM
+// All DB queries must go through Prisma — never raw SQL.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum Paper {
+  accounting
+  law
+  taxation
+  cost
+  audit
+  fm_sm
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum SessionStatus {
+  SETUP
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+// ─────────────────────────────────────────────
+// USER
+// id mirrors Supabase auth.users UUID — set on
+// first login, never auto-generated here.
+// ─────────────────────────────────────────────
+
+model User {
+  id        String   @id                // Supabase auth.users.id (UUID)
+  email     String   @unique
+  name      String?
+  avatarUrl String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions  InterviewSession[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// INVITE CODE
+// Controls beta access via the invite-gate page.
+// A code with maxUses = 1 is single-use.
+// ─────────────────────────────────────────────
+
+model InviteCode {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  label     String?                      // e.g. "ICAI Batch 2024"
+  maxUses   Int       @default(1)
+  useCount  Int       @default(0)
+  isActive  Boolean   @default(true)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@map("invite_codes")
+}
+
+// ─────────────────────────────────────────────
+// QUESTION BANK
+// One row per CA Intermediate question.
+// pineconeId links to the vector in Pinecone
+// (index: mockca-questions, 1536 dims, cosine).
+// ─────────────────────────────────────────────
+
+model Question {
+  id             String     @id @default(cuid())
+  paper          Paper
+  topic          String                          // e.g. "Deferred Tax", "GST ITC"
+  text           String                          // the question itself
+  difficulty     Difficulty @default(MEDIUM)
+  expectedAnswer String                          // model answer for scoring
+  keywords       String[]                        // key terms Claude checks for
+  pineconeId     String?    @unique              // vector ID in Pinecone
+  isActive       Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  sessionQuestions SessionQuestion[]
+
+  @@index([paper])
+  @@index([paper, difficulty])
+  @@index([topic])
+  @@map("questions")
+}
+
+// ─────────────────────────────────────────────
+// INTERVIEW SESSION
+// One session = one mock interview attempt.
+// A student picks a paper + question count,
+// then answers questions one by one.
+// ─────────────────────────────────────────────
+
+model InterviewSession {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  paper         Paper
+  status        SessionStatus @default(SETUP)
+  questionCount Int
+
+  startedAt     DateTime?
+  completedAt   DateTime?
+  totalScore    Float?                           // average of all answer scores (0–10)
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  sessionQuestions SessionQuestion[]
+
+  @@index([userId])
+  @@index([userId, paper])
+  @@index([userId, status])
+  @@map("interview_sessions")
+}
+
+// ─────────────────────────────────────────────
+// SESSION QUESTION
+// Join table: which questions appear in which
+// session, and in what order.
+// ─────────────────────────────────────────────
+
+model SessionQuestion {
+  id         String           @id @default(cuid())
+  sessionId  String
+  session    InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  questionId String
+  question   Question         @relation(fields: [questionId], references: [id])
+
+  order      Int                                // 1-indexed position in session
+  askedAt    DateTime?                          // when TTS delivered the question
+
+  createdAt  DateTime         @default(now())
+
+  answer     Answer?
+
+  @@unique([sessionId, order])
+  @@unique([sessionId, questionId])
+  @@index([sessionId])
+  @@map("session_questions")
+}
+
+// ─────────────────────────────────────────────
+// ANSWER
+// Student's response to one SessionQuestion.
+// transcription = Whisper STT output.
+// audioUrl = Supabase Storage path.
+// ─────────────────────────────────────────────
+
+model Answer {
+  id                String          @id @default(cuid())
+  sessionQuestionId String          @unique
+  sessionQuestion   SessionQuestion @relation(fields: [sessionQuestionId], references: [id], onDelete: Cascade)
+
+  transcription     String?                     // Whisper output (null if no audio yet)
+  audioUrl          String?                     // Supabase Storage URL
+
+  submittedAt       DateTime        @default(now())
+
+  score             Score?
+
+  @@map("answers")
+}
+
+// ─────────────────────────────────────────────
+// SCORE
+// Claude's evaluation of one Answer.
+// All sub-scores are 0–10.
+// keyPointsCovered / keyPointsMissed are
+// taken from the question's `keywords` array.
+// ─────────────────────────────────────────────
+
+model Score {
+  id               String   @id @default(cuid())
+  answerId         String   @unique
+  answer           Answer   @relation(fields: [answerId], references: [id], onDelete: Cascade)
+
+  total            Float                        // weighted overall score (0–10)
+  accuracy         Float                        // factual correctness (0–10)
+  depth            Float                        // depth of explanation (0–10)
+  terminology      Float                        // correct CA terminology (0–10)
+
+  feedback         String                       // Claude's written feedback paragraph
+  keyPointsCovered String[]                     // keywords the student hit
+  keyPointsMissed  String[]                     // keywords the student missed
+
+  scoredAt         DateTime @default(now())
+
+  @@map("scores")
+}
