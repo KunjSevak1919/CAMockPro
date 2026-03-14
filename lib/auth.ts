@@ -1,10 +1,11 @@
 // ============================================================
 // MockCA.ai — Auth Helpers
 // Every API route MUST call getAuthUser() before any logic.
-// Returns the authed user or throws a 401 Response.
+// Uses cookie-based Supabase sessions (refreshed by middleware).
 // ============================================================
 
-import { createSupabaseServer } from "./supabase";
+import { createServerClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 import { prisma } from "./prisma";
 
 export type AuthUser = {
@@ -15,41 +16,42 @@ export type AuthUser = {
 };
 
 /**
- * Validates the Supabase session from request cookies and returns
- * the corresponding Prisma User record.
- *
- * Usage in API routes:
- *   const user = await getAuthUser(request);
+ * Reads the Supabase session from request cookies and returns
+ * the Prisma User record, upserting on first login.
  *
  * Throws a 401 Response if the session is missing or invalid.
+ *
+ * Usage in route handlers:
+ *   const user = await getAuthUser();
  */
-export async function getAuthUser(request: Request): Promise<AuthUser> {
-  const supabase = createSupabaseServer();
+export async function getAuthUser(): Promise<AuthUser> {
+  const cookieStore = cookies();
 
-  const authHeader = request.headers.get("Authorization");
-  const token = authHeader?.replace("Bearer ", "");
-
-  if (!token) {
-    throw new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+      },
+    }
+  );
 
   const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser(token);
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  if (error || !user) {
+  if (!session?.user) {
     throw new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { "Content-Type": "application/json" },
     });
   }
 
-  // Upsert into Prisma users table on every auth check so new
-  // Supabase signups are automatically synced.
+  const { user } = session;
+
   const dbUser = await prisma.user.upsert({
     where: { id: user.id },
     update: {},
