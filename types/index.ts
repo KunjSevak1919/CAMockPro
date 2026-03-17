@@ -197,6 +197,25 @@ export type PineconeMatch = {
 };
 
 // ─────────────────────────────────────────────
+// AI FEEDBACK
+// Returned by /api/interview/submit-text and
+// /api/interview/submit-audio. Held in the
+// interview store as lastFeedback.
+// ─────────────────────────────────────────────
+
+export type AIFeedback = {
+  score: number;                  // 0–100 overall
+  grade: string;                  // e.g. "Good", "Excellent", "Needs Work"
+  strengths: string[];
+  gaps: string[];
+  model_answer: string;
+  follow_up_question: string | null;
+  encouragement: string;
+  missing_concepts: string[];
+  similarity_score: number;       // 0–1 semantic similarity
+};
+
+// ─────────────────────────────────────────────
 // API RESPONSE SHAPES
 // ─────────────────────────────────────────────
 
