@@ -2,97 +2,118 @@
 
 ---
 
-## Current Status
-_Last updated: 2026-03-13 — Week 1 COMPLETE_
+## Current Status — Last Updated: Week 3 Complete
 
-### Week 1 — All tasks done ✅
+### Overall Progress
+Week 1 ✅ | Week 2 ✅ | Week 3 ✅ | Week 4 ⏳ | Week 5-8 not started
 
-| Task | Status |
-|---|---|
-| Next.js 14 scaffold + all dependencies | ✅ |
-| Prisma 5 schema (7 models) + migration | ✅ |
-| All 7 tables live in Supabase | ✅ |
-| Login page — Google OAuth + Email magic link | ✅ |
-| Invite gate page | ✅ |
-| `POST /api/auth/validate-invite` route | ✅ |
-| `GET /api/auth/callback` route | ✅ |
-| Middleware protecting all dashboard + API routes | ✅ |
-| 10 invite codes seeded in Supabase | ✅ |
+### What Is Fully Working Right Now
+- npm run dev starts clean on localhost:3000
+- npm run build passes with zero errors
+- Email OTP login via Supabase Auth
+- Google OAuth login via Supabase Auth
+- Invite code gate — 9 codes remaining
+- Protected dashboard route with sidebar
+- Admin panel at /admin (password protected)
+- Questions API GET + POST
+- Interview setup 3-step wizard
+- Live interview room with timer + feedback
+- Results page with score breakdown
+- Mocked feedback (score always 75, grade Good)
 
-### What is working right now
-- `npm run build` passes clean, zero errors
-- Supabase project connected (`jatkltrqgfeeurvdukql`)
-- All 7 tables live: `users`, `invite_codes`, `questions`, `interview_sessions`, `session_questions`, `answers`, `scores`
-- Auth flow end-to-end: Google OAuth → callback → invite gate → dashboard
-- Magic link OTP flow: email → callback → invite gate → dashboard
-- Middleware refreshes session on every request; unauthenticated requests → `/login`; authed users on `/login` → `/invite-gate`
-- `getAuthUser()` reads cookie-based session, upserts user into Prisma on first login
-- `lib/supabase.ts` exports `createSupabaseAdmin()` (service role, server-only)
-- `types/index.ts` fully populated with all shared types and AI I/O contracts
+### What Is NOT Working Yet
+- Real AI scoring (Week 4 — next task)
+- Audio mode / Whisper STT (Week 5)
+- ElevenLabs TTS voice (Week 5)
+- Session history page (Week 6)
+- Analytics / radar chart (Week 6)
 
-### Invite codes live in Supabase (maxUses: 1, isActive: true)
-```
-MOCKCA-BETA-FLBD    MOCKCA-BETA-MNQS    MOCKCA-BETA-7Y26
-MOCKCA-BETA-7RXP    MOCKCA-BETA-8GR4    MOCKCA-BETA-9UBY
-MOCKCA-BETA-9N4Z    MOCKCA-BETA-TYL9    MOCKCA-BETA-ZAZB
+### Files Built So Far
+AUTH:
+- app/(auth)/login/page.tsx
+- app/(auth)/invite-gate/page.tsx
+- app/(auth)/layout.tsx
+- app/api/auth/validate-invite/route.ts
+- app/api/auth/callback/route.ts
+- middleware.ts
+
+DASHBOARD:
+- app/(dashboard)/layout.tsx
+- app/(dashboard)/dashboard/page.tsx
+- components/dashboard/NavLink.tsx
+- components/dashboard/SignOutButton.tsx
+
+ADMIN:
+- app/admin/page.tsx
+- app/api/admin/questions/route.ts
+
+INTERVIEW:
+- app/(dashboard)/interview/setup/page.tsx
+- app/(dashboard)/interview/[sessionId]/page.tsx
+- app/(dashboard)/interview/results/[sessionId]/page.tsx
+- app/api/sessions/create/route.ts
+- app/api/interview/submit-text/route.ts
+
+COMPONENTS:
+- components/interview/ScoreRing.tsx
+- components/interview/QuestionCard.tsx
+- components/interview/Timer.tsx
+- components/interview/FeedbackCard.tsx
+- components/interview/MissingConceptChip.tsx
+
+STATE:
+- lib/stores/interviewStore.ts (Zustand)
+- types/index.ts (AIFeedback + all types)
+
+AI STUBS (empty, ready for Week 4):
+- lib/ai/scoreAnswer.ts
+- lib/ai/openai.ts
+- lib/ai/pinecone.ts
+- lib/ai/similarity.ts
+- lib/ai/transcribe.ts
+
+### Invite Codes (10 total, 1 used for testing)
+USED: MOCKCA-BETA-FLBD
+AVAILABLE:
+MOCKCA-BETA-MNQS  MOCKCA-BETA-7Y26
+MOCKCA-BETA-7RXP  MOCKCA-BETA-8GR4
+MOCKCA-BETA-9UBY  MOCKCA-BETA-9N4Z
+MOCKCA-BETA-TYL9  MOCKCA-BETA-ZAZB
 MOCKCA-BETA-Z9TR
-```
-To generate more: `npx tsx scripts/seedInviteCodes.ts`
 
-### All files (complete list)
+### Database — 7 Tables Live in Supabase
+users, invite_codes, questions,
+interview_sessions, session_questions,
+answers, scores
 
-**App scaffold**
-- `package.json`, `tsconfig.json`, `next.config.mjs`, `postcss.config.mjs`
-- `app/layout.tsx`, `app/page.tsx`, `app/globals.css` (Shadcn CSS variable theme)
-- `.gitignore` — excludes `.env`, `lib/generated/prisma`
-- `next-env.d.ts`
+### Session Resume ID
+f51dcc4a-a2d2-4e54-a4ac-7cab985ede7a
 
-**Shadcn/ui**
-- `components.json`, `tailwind.config.ts`
-- `components/ui/` — button, card, dialog, tabs, badge, progress, toast, toaster, accordion, collapsible, input, label
-- `hooks/use-toast.ts`
+### Next Task — Week 4: Real AI Engine
+Build in this exact order:
+1. lib/ai/similarity.ts — cosineSimilarity()
+2. lib/ai/openai.ts — embed() with ada-002
+3. lib/ai/pinecone.ts — Pinecone index connection
+4. scripts/embedAllQuestions.ts — seeder
+5. lib/ai/scoreAnswer.ts — full 8-step pipeline
+6. Update submit-text route to use real scoreAnswer()
 
-**Auth flow**
-- `app/(auth)/layout.tsx` — centered layout, `force-dynamic`
-- `app/(auth)/login/page.tsx` — Google OAuth + magic link OTP
-- `app/(auth)/invite-gate/page.tsx` — invite code form
-- `app/api/auth/validate-invite/route.ts` — validates code, increments `useCount`
-- `app/api/auth/callback/route.ts` — exchanges code for session cookie
-- `middleware.ts` — session refresh + route protection
+IMPORTANT before Week 4:
+- Need minimum 10 questions in DB with good
+  idealAnswer and keyTerms filled
+- Verify .env has ANTHROPIC_API_KEY,
+  OPENAI_API_KEY, PINECONE_API_KEY all filled
+- Run embedAllQuestions.ts after building it
 
-**Core lib**
-- `lib/utils.ts` — `cn()` helper
-- `lib/prisma.ts` — Prisma 5 singleton (`@prisma/client`)
-- `lib/supabase.ts` — `createSupabaseAdmin()` (service role, server-only)
-- `lib/auth.ts` — `getAuthUser()` cookie-based, upserts User
-
-**AI module stubs (not yet implemented)**
-- `lib/ai/scoreAnswer.ts`, `lib/ai/openai.ts`, `lib/ai/pinecone.ts`
-- `lib/ai/similarity.ts`, `lib/ai/transcribe.ts`
-
-**Zustand store stubs (not yet implemented)**
-- `lib/stores/interviewStore.ts`, `lib/stores/userStore.ts`
-
-**Types + DB**
-- `types/index.ts` — all shared types, AI I/O contracts, store types, API wrappers
-- `prisma/schema.prisma` — Prisma 5, `prisma-client-js`, 7 models
-- `prisma/migrations/20260314053030_init/` — initial migration (applied)
-- `scripts/seedInviteCodes.ts` — generates + inserts invite codes
-
-### Exact stopping point
-Week 1 is complete. The app currently shows the landing page at `/`.
-`app/(dashboard)/layout.tsx` does not exist yet — `/dashboard` 404s.
-No dashboard UI, no interview flow, no question bank yet.
-
-### Next task — Week 2: Dashboard + Paper Selection
-
-1. `app/(dashboard)/layout.tsx` — sidebar nav, user avatar, sign-out button
-2. `app/(dashboard)/dashboard/page.tsx` — paper selection cards (6 papers), recent sessions
-3. `app/(dashboard)/interview/setup/page.tsx` — pick difficulty + question count
-4. `app/api/sessions/route.ts` — POST to create a new `InterviewSession`
-5. `lib/stores/userStore.ts` — implement Zustand store with user profile
-6. `components/dashboard/PaperCard.tsx` — card for each CA paper
-7. `components/dashboard/RecentSessions.tsx` — last 5 sessions with scores
+### Critical Rules (never break these)
+1. All types only in types/index.ts
+2. All AI calls only through lib/ai/ modules
+3. All DB queries only through Prisma
+4. All API routes must use getAuthUser()
+5. Never expose SUPABASE_SERVICE_ROLE_KEY to client
+6. Shadcn/ui only for UI components
+7. Never hardcode API keys
+8. npm run build must pass before any session ends
 
 ---
 
