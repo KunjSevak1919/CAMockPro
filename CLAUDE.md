@@ -3,126 +3,96 @@
 ---
 
 ## Current Status
-_Last updated: 2026-03-10 — Week 1, Day 1_
+_Last updated: 2026-03-13 — Week 1 COMPLETE_
+
+### Week 1 — All tasks done ✅
+
+| Task | Status |
+|---|---|
+| Next.js 14 scaffold + all dependencies | ✅ |
+| Prisma 5 schema (7 models) + migration | ✅ |
+| All 7 tables live in Supabase | ✅ |
+| Login page — Google OAuth + Email magic link | ✅ |
+| Invite gate page | ✅ |
+| `POST /api/auth/validate-invite` route | ✅ |
+| `GET /api/auth/callback` route | ✅ |
+| Middleware protecting all dashboard + API routes | ✅ |
+| 10 invite codes seeded in Supabase | ✅ |
 
 ### What is working right now
-- `npm run build` passes clean with zero errors
-- Next.js 14 App Router project fully scaffolded
-- All npm dependencies installed (see Tech Stack)
-- Shadcn/ui configured (Slate theme, CSS variables, RSC mode)
-- All 10 Shadcn components installed and type-safe
-- Complete folder structure matching CLAUDE.md spec
-- Prisma 7 schema defined with all 7 models
-- Prisma client generated at `lib/generated/prisma/`
-- `lib/prisma.ts` singleton ready (uses `@prisma/adapter-pg`)
-- `lib/supabase.ts` exports `createSupabaseClient()` and `createSupabaseServer()`
-- `lib/auth.ts` exports `getAuthUser(request)` — ready to use in API routes
-- `types/index.ts` fully populated with all shared types
+- `npm run build` passes clean, zero errors
+- Supabase project connected (`jatkltrqgfeeurvdukql`)
+- All 7 tables live: `users`, `invite_codes`, `questions`, `interview_sessions`, `session_questions`, `answers`, `scores`
+- Auth flow end-to-end: Google OAuth → callback → invite gate → dashboard
+- Magic link OTP flow: email → callback → invite gate → dashboard
+- Middleware refreshes session on every request; unauthenticated requests → `/login`; authed users on `/login` → `/invite-gate`
+- `getAuthUser()` reads cookie-based session, upserts user into Prisma on first login
+- `lib/supabase.ts` exports `createSupabaseAdmin()` (service role, server-only)
+- `types/index.ts` fully populated with all shared types and AI I/O contracts
 
-### Exact stopping point
-Prisma schema is written and `prisma generate` has run successfully.
-**No Supabase project has been connected yet.**
-`DATABASE_URL` and `DIRECT_URL` in `.env` are empty placeholders.
-`npx prisma migrate dev` has NOT been run — no tables exist in any database yet.
+### Invite codes live in Supabase (maxUses: 1, isActive: true)
+```
+MOCKCA-BETA-FLBD    MOCKCA-BETA-MNQS    MOCKCA-BETA-7Y26
+MOCKCA-BETA-7RXP    MOCKCA-BETA-8GR4    MOCKCA-BETA-9UBY
+MOCKCA-BETA-9N4Z    MOCKCA-BETA-TYL9    MOCKCA-BETA-ZAZB
+MOCKCA-BETA-Z9TR
+```
+To generate more: `npx tsx scripts/seedInviteCodes.ts`
 
-### Files created today
+### All files (complete list)
 
-**Project scaffold (via create-next-app@14)**
-- `package.json` — name: camockpro, Next.js 14
-- `tsconfig.json`, `next.config.mjs`, `postcss.config.mjs`
-- `app/layout.tsx`, `app/page.tsx`, `app/globals.css`
-- `app/favicon.ico`, `app/fonts/GeistVF.woff`, `app/fonts/GeistMonoVF.woff`
-- `.gitignore` — extended to exclude `.env` and `lib/generated/prisma`
+**App scaffold**
+- `package.json`, `tsconfig.json`, `next.config.mjs`, `postcss.config.mjs`
+- `app/layout.tsx`, `app/page.tsx`, `app/globals.css` (Shadcn CSS variable theme)
+- `.gitignore` — excludes `.env`, `lib/generated/prisma`
 - `next-env.d.ts`
 
 **Shadcn/ui**
-- `components.json` — style: default, baseColor: slate, cssVariables: true
-- `tailwind.config.ts` — full Shadcn token set (colors, radius, keyframes)
-- `components/ui/button.tsx`
-- `components/ui/card.tsx`
-- `components/ui/dialog.tsx`
-- `components/ui/tabs.tsx`
-- `components/ui/badge.tsx`
-- `components/ui/progress.tsx`
-- `components/ui/toast.tsx`
-- `components/ui/toaster.tsx`
-- `components/ui/accordion.tsx`
-- `components/ui/collapsible.tsx`
+- `components.json`, `tailwind.config.ts`
+- `components/ui/` — button, card, dialog, tabs, badge, progress, toast, toaster, accordion, collapsible, input, label
 - `hooks/use-toast.ts`
 
-**Folder structure (empty folders tracked with .gitkeep)**
-- `app/(auth)/login/.gitkeep`
-- `app/(auth)/invite-gate/.gitkeep`
-- `app/(dashboard)/dashboard/.gitkeep`
-- `app/(dashboard)/interview/setup/.gitkeep`
-- `app/(dashboard)/interview/[sessionId]/.gitkeep`
-- `app/(dashboard)/interview/results/[sessionId]/.gitkeep`
-- `app/(dashboard)/history/.gitkeep`
-- `app/api/.gitkeep`
-- `components/interview/.gitkeep`
-- `components/dashboard/.gitkeep`
-- `components/shared/.gitkeep`
+**Auth flow**
+- `app/(auth)/layout.tsx` — centered layout, `force-dynamic`
+- `app/(auth)/login/page.tsx` — Google OAuth + magic link OTP
+- `app/(auth)/invite-gate/page.tsx` — invite code form
+- `app/api/auth/validate-invite/route.ts` — validates code, increments `useCount`
+- `app/api/auth/callback/route.ts` — exchanges code for session cookie
+- `middleware.ts` — session refresh + route protection
 
-**Core lib files**
-- `lib/utils.ts` — `cn()` helper (clsx + tailwind-merge)
-- `lib/prisma.ts` — Prisma 7 singleton with `@prisma/adapter-pg`
-- `lib/supabase.ts` — `createSupabaseClient()` (anon) + `createSupabaseServer()` (service role)
-- `lib/auth.ts` — `getAuthUser(request)` validates token, upserts User into Prisma
+**Core lib**
+- `lib/utils.ts` — `cn()` helper
+- `lib/prisma.ts` — Prisma 5 singleton (`@prisma/client`)
+- `lib/supabase.ts` — `createSupabaseAdmin()` (service role, server-only)
+- `lib/auth.ts` — `getAuthUser()` cookie-based, upserts User
 
-**AI module stubs (headers only, not yet implemented)**
-- `lib/ai/scoreAnswer.ts`
-- `lib/ai/openai.ts`
-- `lib/ai/pinecone.ts`
-- `lib/ai/similarity.ts`
-- `lib/ai/transcribe.ts`
+**AI module stubs (not yet implemented)**
+- `lib/ai/scoreAnswer.ts`, `lib/ai/openai.ts`, `lib/ai/pinecone.ts`
+- `lib/ai/similarity.ts`, `lib/ai/transcribe.ts`
 
-**Zustand store stubs (headers only, not yet implemented)**
-- `lib/stores/interviewStore.ts`
-- `lib/stores/userStore.ts`
+**Zustand store stubs (not yet implemented)**
+- `lib/stores/interviewStore.ts`, `lib/stores/userStore.ts`
 
-**Types**
-- `types/index.ts` — all Paper/Difficulty/SessionStatus enums, all model types,
-  AI I/O contracts (ScoreAnswerInput/Output, PineconeMatch),
-  Zustand store types (InterviewPhase, ActiveSessionQuestion),
-  API response wrappers (ApiSuccess, ApiError, ApiResponse)
+**Types + DB**
+- `types/index.ts` — all shared types, AI I/O contracts, store types, API wrappers
+- `prisma/schema.prisma` — Prisma 5, `prisma-client-js`, 7 models
+- `prisma/migrations/20260314053030_init/` — initial migration (applied)
+- `scripts/seedInviteCodes.ts` — generates + inserts invite codes
 
-**Database**
-- `prisma/schema.prisma` — 7 models: User, InviteCode, Question,
-  InterviewSession, SessionQuestion, Answer, Score
-- `prisma.config.ts` — Prisma 7 CLI config (reads DIRECT_URL for migrations)
-- `lib/generated/prisma/` — generated Prisma client (gitignored, must regenerate)
-- `.env` — full env variable template (gitignored, values are empty)
+### Exact stopping point
+Week 1 is complete. The app currently shows the landing page at `/`.
+`app/(dashboard)/layout.tsx` does not exist yet — `/dashboard` 404s.
+No dashboard UI, no interview flow, no question bank yet.
 
-### Files modified today
-- `app/globals.css` — replaced scaffold styles with full Shadcn CSS variable theme
-- `tailwind.config.ts` — replaced scaffold config with Shadcn token config
-- `.gitignore` — added `.env` and `lib/generated/prisma`
-- `prisma.config.ts` — corrected Prisma 7 datasource config (removed unsupported `directUrl`)
+### Next task — Week 2: Dashboard + Paper Selection
 
-### Next task (start here tomorrow)
-
-**Step 1 — Connect Supabase (5 min, manual)**
-1. Create a Supabase project at supabase.com
-2. Go to Settings → Database → copy the two connection strings:
-   - "Transaction" pooler (port 6543) → `DATABASE_URL` in `.env`
-   - "Session" pooler or direct (port 5432) → `DIRECT_URL` in `.env`
-3. Go to Settings → API → copy:
-   - Project URL → `NEXT_PUBLIC_SUPABASE_URL`
-   - anon public key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - service_role secret → `SUPABASE_SERVICE_ROLE_KEY`
-4. Copy `.env` to `.env.local` (Next.js runtime reads `.env.local`)
-
-**Step 2 — Run first migration**
-```bash
-npx prisma migrate dev --name init
-```
-This creates all 7 tables in Supabase.
-
-**Step 3 — Build the auth flow**
-- `app/(auth)/login/page.tsx` — email/password + Google OAuth via Supabase
-- `app/(auth)/invite-gate/page.tsx` — validate invite code before allowing signup
-- `app/(dashboard)/layout.tsx` — server component auth guard (redirect to /login if no session)
-- `app/api/auth/verify-invite/route.ts` — POST endpoint to check InviteCode
+1. `app/(dashboard)/layout.tsx` — sidebar nav, user avatar, sign-out button
+2. `app/(dashboard)/dashboard/page.tsx` — paper selection cards (6 papers), recent sessions
+3. `app/(dashboard)/interview/setup/page.tsx` — pick difficulty + question count
+4. `app/api/sessions/route.ts` — POST to create a new `InterviewSession`
+5. `lib/stores/userStore.ts` — implement Zustand store with user profile
+6. `components/dashboard/PaperCard.tsx` — card for each CA paper
+7. `components/dashboard/RecentSessions.tsx` — last 5 sessions with scores
 
 ---
 
@@ -137,7 +107,7 @@ AI-powered mock interview platform for CA Intermediate students in India. Studen
 | Language | TypeScript (strict mode) |
 | Styling | Tailwind CSS + Shadcn/ui only |
 | Auth + DB + Storage | Supabase |
-| ORM | Prisma 7 (PostgreSQL via Supabase, `@prisma/adapter-pg`) |
+| ORM | Prisma 5 (PostgreSQL via Supabase, `prisma-client-js`) |
 | State | Zustand |
 | Data Fetching | TanStack Query |
 | AI Scoring | Claude API (`claude-sonnet-4-6`) |
@@ -148,12 +118,13 @@ AI-powered mock interview platform for CA Intermediate students in India. Studen
 | Hosting | Vercel |
 | Email | Resend |
 
-### Key Prisma 7 notes
-- `url` / `directUrl` are NOT in `schema.prisma` (Prisma 7 removed this)
-- CLI connection is in `prisma.config.ts` → reads `DIRECT_URL` from env
-- Runtime connection uses `@prisma/adapter-pg` in `lib/prisma.ts` → reads `DATABASE_URL`
-- Import Prisma types from `@/lib/generated/prisma/client`, not `@prisma/client`
-- After any schema change: `npx prisma migrate dev` then `npx prisma generate`
+### Key Prisma notes (Prisma 5)
+- Generator is `prisma-client-js` — import from `@prisma/client`
+- `url = env("DATABASE_URL")` and `directUrl = env("DIRECT_URL")` are in `schema.prisma`
+- `DATABASE_URL` — transaction pooler URL (port 6543, used at runtime)
+- `DIRECT_URL` — direct/session URL (port 5432, used by Prisma CLI for migrations)
+- After any schema change: `npx prisma migrate dev --name <desc>` (regenerates client automatically)
+- `prisma.config.ts` does NOT exist — that was a Prisma 7 concept, deleted
 
 ## Folder Structure
 
@@ -266,15 +237,15 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 ## Project Status
 
 - **Timeline:** 8 weeks total
-- **Current week:** 1 of 8
-- **Build steps completed:** 2 of 8 (scaffold + schema)
+- **Current week:** 2 of 8
+- **Build steps completed:** 3 of 8
 
 ## Build Order (reference)
 
 1. ~~Project scaffold + dependencies~~ ✅
 2. ~~Prisma schema + folder structure + core lib files~~ ✅
-3. **Supabase connection + first migration + auth flow** ← next
-4. Dashboard + paper selection UI
+3. ~~Supabase connection + migration + full auth flow~~ ✅
+4. **Dashboard + paper selection UI** ← next (Week 2)
 5. Interview session (question delivery, STT, TTS)
 6. Answer scoring via Claude
 7. Results page + history
