@@ -1,34 +1,43 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { createSupabaseAdmin } from "@/lib/supabase";
 import { prisma } from "@/lib/prisma";
 
+// POST /api/auth/validate-invite
+// Uses Bearer token auth (Authorization: Bearer <jwt>) so we don't rely on
+// cookies inside a POST request — the invite-gate page sends the token
+// explicitly after reading it from the browser Supabase client.
+
 export async function POST(request: Request) {
-  // Get the Supabase session to identify the user
-  const cookieStore = cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-      },
-    }
-  );
+  // ── Identify the user via Bearer token ──────────────────────────────────
+  const authHeader = request.headers.get("Authorization");
+  const token = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : null;
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session?.user) {
-    return NextResponse.json({ valid: false, message: "Unauthorized." }, { status: 401 });
+  if (!token) {
+    return NextResponse.json(
+      { valid: false, message: "Unauthorized." },
+      { status: 401 }
+    );
   }
 
-  const authUser = session.user;
+  const supabase = createSupabaseAdmin();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser(token);
 
-  // Parse invite code from body
+  console.log("validate-invite — getUser error:", userError?.message ?? "none");
+  console.log("validate-invite — user email:", user?.email);
+
+  if (userError || !user) {
+    return NextResponse.json(
+      { valid: false, message: "Unauthorized." },
+      { status: 401 }
+    );
+  }
+
+  // ── Parse invite code ────────────────────────────────────────────────────
   let code: string;
   try {
     const body = await request.json();
@@ -47,10 +56,8 @@ export async function POST(request: Request) {
     );
   }
 
-  // Validate invite code
-  const inviteCode = await prisma.inviteCode.findUnique({
-    where: { code },
-  });
+  // ── Validate invite code ─────────────────────────────────────────────────
+  const inviteCode = await prisma.inviteCode.findUnique({ where: { code } });
 
   if (!inviteCode) {
     return NextResponse.json({ valid: false, message: "Invite code not found." });
@@ -77,18 +84,18 @@ export async function POST(request: Request) {
     });
   }
 
-  // Valid — save inviteCodeUsed on user and increment useCount atomically
+  // ── Save inviteCodeUsed + increment useCount ─────────────────────────────
   await Promise.all([
     prisma.user.upsert({
-      where: { email: authUser.email! },
+      where: { email: user.email! },
       update: { inviteCodeUsed: code },
       create: {
-        id: authUser.id,
-        email: authUser.email!,
+        id: user.id,
+        email: user.email!,
         name:
-          authUser.user_metadata?.full_name ??
-          authUser.email!.split("@")[0],
-        avatarUrl: authUser.user_metadata?.avatar_url ?? null,
+          (user.user_metadata?.full_name as string | undefined) ??
+          user.email!.split("@")[0],
+        avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? null,
         examLevel: "intermediate",
         inviteCodeUsed: code,
       },
@@ -98,6 +105,8 @@ export async function POST(request: Request) {
       data: { useCount: { increment: 1 } },
     }),
   ]);
+
+  console.log("User updated with inviteCodeUsed:", code);
 
   return NextResponse.json({ valid: true });
 }

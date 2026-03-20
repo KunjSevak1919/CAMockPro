@@ -9,17 +9,26 @@ export const config = {
   ],
 };
 
-// Routes that do NOT require a Supabase session
-const PUBLIC_PATHS = ["/login", "/invite-gate", "/waitlist"];
-const PUBLIC_API_PATHS = [
-  "/api/auth/validate-invite",
-  "/api/auth/callback",
-  "/api/auth/check-access",
+// Routes that never require authentication
+const PUBLIC_PATHS = ["/login", "/invite-gate", "/waitlist", "/"];
+const PUBLIC_API_PREFIXES = ["/api/auth/"];
+
+// Routes that always require an active Supabase session
+const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/interview",
+  "/history",
+  "/profile",
+  "/admin",
+  "/api/sessions",
+  "/api/interview",
+  "/api/admin",
 ];
 
 export async function middleware(req: NextRequest) {
   let res = NextResponse.next({ request: { headers: req.headers } });
 
+  // Refresh session cookie on every request (keeps the JWT alive)
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -42,7 +51,6 @@ export async function middleware(req: NextRequest) {
     }
   );
 
-  // Always refresh the session so cookies stay up to date
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -52,15 +60,16 @@ export async function middleware(req: NextRequest) {
   const isPublicPath = PUBLIC_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + "/")
   );
-  const isPublicApi = PUBLIC_API_PATHS.some((p) => pathname.startsWith(p));
+  const isPublicApi = PUBLIC_API_PREFIXES.some((p) => pathname.startsWith(p));
+  const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
 
-  // Unauthenticated user hitting a protected route → /login
-  if (!session && !isPublicPath && !isPublicApi) {
+  // Only rule: no session + protected route → /login
+  if (!session && isProtected && !isPublicPath && !isPublicApi) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  // Authenticated user hitting /login → /dashboard
-  // (check-access on invite-gate handles the invite logic)
+  // Authenticated user on /login → /dashboard
+  // (the callback handles invite-gate routing — middleware never touches it)
   if (session && pathname === "/login") {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
