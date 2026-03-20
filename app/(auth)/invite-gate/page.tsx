@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,9 +16,30 @@ import { Label } from "@/components/ui/label";
 
 export default function InviteGatePage() {
   const router = useRouter();
+
+  const [checking, setChecking] = useState(true); // checking access on mount
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // On mount: check if the user already has access (returning user)
+  useEffect(() => {
+    async function checkAccess() {
+      try {
+        const res = await fetch("/api/auth/check-access");
+        const data = await res.json();
+        if (data.hasAccess) {
+          router.replace("/dashboard");
+          return;
+        }
+      } catch {
+        // Network error — fall through and show the form
+      }
+      setChecking(false);
+    }
+
+    checkAccess();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,6 +67,16 @@ export default function InviteGatePage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Show spinner while checking access
+  if (checking) {
+    return (
+      <div className="flex flex-col items-center gap-3 text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin" />
+        <p className="text-sm">Checking access…</p>
+      </div>
+    );
   }
 
   return (
@@ -86,7 +118,14 @@ export default function InviteGatePage() {
           )}
 
           <Button type="submit" className="w-full" disabled={loading || !code}>
-            {loading ? "Verifying…" : "Continue"}
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Verifying…
+              </>
+            ) : (
+              "Continue"
+            )}
           </Button>
         </form>
 

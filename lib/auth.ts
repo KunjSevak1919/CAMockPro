@@ -13,6 +13,7 @@ export type AuthUser = {
   email: string;
   name: string | null;
   avatarUrl: string | null;
+  inviteCodeUsed: string | null;
 };
 
 /**
@@ -61,7 +62,7 @@ export async function getAuthUser(): Promise<AuthUser> {
       name: user.user_metadata?.full_name ?? null,
       avatarUrl: user.user_metadata?.avatar_url ?? null,
     },
-    select: { id: true, email: true, name: true, avatarUrl: true },
+    select: { id: true, email: true, name: true, avatarUrl: true, inviteCodeUsed: true },
   });
 
   return dbUser;

@@ -54,6 +54,8 @@ export type User = {
   email: string;
   name: string | null;
   avatarUrl: string | null;
+  examLevel: string | null;
+  inviteCodeUsed: string | null;
   createdAt: Date;
 };
 

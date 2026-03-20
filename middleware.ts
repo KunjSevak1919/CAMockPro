@@ -10,8 +10,12 @@ export const config = {
 };
 
 // Routes that do NOT require a Supabase session
-const PUBLIC_PATHS = ["/login", "/invite-gate"];
-const PUBLIC_API_PATHS = ["/api/auth/validate-invite", "/api/auth/callback"];
+const PUBLIC_PATHS = ["/login", "/invite-gate", "/waitlist"];
+const PUBLIC_API_PATHS = [
+  "/api/auth/validate-invite",
+  "/api/auth/callback",
+  "/api/auth/check-access",
+];
 
 export async function middleware(req: NextRequest) {
   let res = NextResponse.next({ request: { headers: req.headers } });
@@ -55,9 +59,10 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  // Authenticated user hitting /login → /invite-gate
+  // Authenticated user hitting /login → /dashboard
+  // (check-access on invite-gate handles the invite logic)
   if (session && pathname === "/login") {
-    return NextResponse.redirect(new URL("/invite-gate", req.url));
+    return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
   return res;
