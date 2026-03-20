@@ -2,43 +2,69 @@
 
 ---
 
-## Current Status — Last Updated: Week 3 Complete
+## Current Status — Last Updated: Week 4 Complete
 
 ### Overall Progress
-Week 1 ✅ | Week 2 ✅ | Week 3 ✅ | Week 4 ⏳ | Week 5-8 not started
+Week 1 ✅ | Week 2 ✅ | Week 3 ✅ | Week 4 ✅ | Week 5 ⏳ | Week 6-8 not started
 
 ### What Is Fully Working Right Now
 - npm run dev starts clean on localhost:3000
 - npm run build passes with zero errors
-- Email OTP login via Supabase Auth
-- Google OAuth login via Supabase Auth
-- Invite code gate — 9 codes remaining
+- Root page redirects to /login automatically
+- Sign In / Sign Up tabs on login page
+- Google OAuth login — returns users go to /dashboard directly
+- Email OTP login
+- Returning users bypass invite gate completely
+- Cookie forwarding bug fixed in auth callback
+- Invite code gate for new users
+- inviteCodeUsed saved correctly after validation
 - Protected dashboard route with sidebar
+- MockCA.ai logo + user name + sign out in sidebar
 - Admin panel at /admin (password protected)
-- Questions API GET + POST
-- Interview setup 3-step wizard
-- Live interview room with timer + feedback
-- Results page with score breakdown
-- Mocked feedback (score always 75, grade Good)
+- Questions API GET + POST working
+- 10 CA Intermediate questions in database (Accounting Paper 1, difficulty 3)
+- Interview setup 3-step wizard (subject → difficulty → mode)
+- Session creation in database with 5 questions
+- Live interview room with timer + question counter
+- Answer submission stored in database
+- FeedbackCard rendering with score ring + grade
+- Results page with per-question accordion
+- AI engine built and connected (falls back to mocked if Claude API unavailable)
+
+### AI Engine Status
+- lib/ai/similarity.ts ✅ cosineSimilarity() from scratch
+- lib/ai/openai.ts ✅ embed() via ada-002
+- lib/ai/pinecone.ts ✅ lazy getIndex() connected
+- lib/ai/scoreAnswer.ts ✅ full 8-step pipeline
+- scripts/embedAllQuestions.ts ✅ built + dotenv fix applied
+- 10 questions embedded in Pinecone ✅
+- submit-text route uses real scoreAnswer() ✅
+- Fallback to mocked feedback if AI fails ✅
+- BLOCKER: Anthropic API credits needed at console.anthropic.com
 
 ### What Is NOT Working Yet
-- Real AI scoring (Week 4 — next task)
+- Real Claude API feedback (need Anthropic credits added)
 - Audio mode / Whisper STT (Week 5)
 - ElevenLabs TTS voice (Week 5)
 - Session history page (Week 6)
 - Analytics / radar chart (Week 6)
+- Email notifications (Week 7)
+- Referral links (Week 6)
+- Mobile responsive polish (Week 6)
 
 ### Files Built So Far
+
 AUTH:
-- app/(auth)/login/page.tsx
-- app/(auth)/invite-gate/page.tsx
+- app/(auth)/login/page.tsx (Sign In + Sign Up tabs)
+- app/(auth)/invite-gate/page.tsx (auto-redirect returning users)
 - app/(auth)/layout.tsx
 - app/api/auth/validate-invite/route.ts
-- app/api/auth/callback/route.ts
+- app/api/auth/callback/route.ts (cookie fix applied)
+- app/api/auth/check-access/route.ts
 - middleware.ts
 
 DASHBOARD:
-- app/(dashboard)/layout.tsx
+- app/(dashboard)/layout.tsx (sidebar + nav)
 - app/(dashboard)/dashboard/page.tsx
 - components/dashboard/NavLink.tsx
 - components/dashboard/SignOutButton.tsx
@@ -52,7 +78,7 @@ INTERVIEW:
 - app/(dashboard)/interview/[sessionId]/page.tsx
 - app/(dashboard)/interview/results/[sessionId]/page.tsx
 - app/api/sessions/create/route.ts
-- app/api/interview/submit-text/route.ts
+- app/api/interview/submit-text/route.ts (real AI connected)
 
 COMPONENTS:
 - components/interview/ScoreRing.tsx
@@ -61,16 +87,40 @@ COMPONENTS:
 - components/interview/FeedbackCard.tsx
 - components/interview/MissingConceptChip.tsx
 
-STATE:
-- lib/stores/interviewStore.ts (Zustand)
-- types/index.ts (AIFeedback + all types)
-
-AI STUBS (empty, ready for Week 4):
-- lib/ai/scoreAnswer.ts
+AI ENGINE:
+- lib/ai/similarity.ts
 - lib/ai/openai.ts
 - lib/ai/pinecone.ts
-- lib/ai/similarity.ts
-- lib/ai/transcribe.ts
+- lib/ai/scoreAnswer.ts
+- lib/ai/transcribe.ts (stub, Week 5)
+- scripts/embedAllQuestions.ts
+
+STATE + TYPES:
+- lib/stores/interviewStore.ts (Zustand)
+- lib/stores/userStore.ts
+- types/index.ts (all types including AIFeedback)
+
+PAGES:
+- app/page.tsx (redirects to /login)
+- app/layout.tsx (metadata updated)
+
+### Database — 7 Tables Live in Supabase
+users, invite_codes, questions,
+interview_sessions, session_questions,
+answers, scores
+
+### Questions in Database
+10 Accounting Paper 1 questions (difficulty 3):
+1. Deferred Tax (Ind AS 12) — embedded ✅
+2. Going Concern — embedded ✅
+3. Depreciation SLM vs WDV — embedded ✅
+4. Materiality — embedded ✅
+5. Revenue Recognition (Ind AS 115) — embedded ✅
+6. Inventory Valuation (Ind AS 2) — embedded ✅
+7. Provisions vs Contingent Liabilities (Ind AS 37) — embedded ✅
+8. Impairment (Ind AS 36) — embedded ✅
+9. Leases (Ind AS 116) — embedded ✅
+10. Financial Instruments (Ind AS 109) — embedded ✅
 
 ### Invite Codes (10 total, 1 used for testing)
 USED: MOCKCA-BETA-FLBD
@@ -81,29 +131,48 @@ MOCKCA-BETA-9UBY  MOCKCA-BETA-9N4Z
 MOCKCA-BETA-TYL9  MOCKCA-BETA-ZAZB
 MOCKCA-BETA-Z9TR
 
-### Database — 7 Tables Live in Supabase
-users, invite_codes, questions,
-interview_sessions, session_questions,
-answers, scores
+### API Keys Status
+All confirmed in .env:
+- NEXT_PUBLIC_SUPABASE_URL ✅
+- NEXT_PUBLIC_SUPABASE_ANON_KEY ✅
+- SUPABASE_SERVICE_ROLE_KEY ✅
+- DATABASE_URL ✅
+- DIRECT_URL ✅
+- ANTHROPIC_API_KEY ✅ (credits needed at console.anthropic.com)
+- OPENAI_API_KEY ✅ ($5 credits added, working)
+- PINECONE_API_KEY ✅
+- PINECONE_INDEX_NAME=mockca-questions ✅
+- ELEVENLABS_API_KEY ✅
+- ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM ✅
+- ADMIN_PASSWORD ✅
+
+Not yet added (needed later):
+- RESEND_API_KEY (Week 7)
+- NEXT_PUBLIC_POSTHOG_KEY (Week 6)
+- SENTRY_DSN (Week 6)
+
+### Known Issues to Fix
+1. Anthropic API credits — add at console.anthropic.com
+   then real AI feedback will work
+2. Supabase getSession() warning — replace with
+   getUser() across all server components (minor)
 
 ### Session Resume ID
 f51dcc4a-a2d2-4e54-a4ac-7cab985ede7a
 
-### Next Task — Week 4: Real AI Engine
-Build in this exact order:
-1. lib/ai/similarity.ts — cosineSimilarity()
-2. lib/ai/openai.ts — embed() with ada-002
-3. lib/ai/pinecone.ts — Pinecone index connection
-4. scripts/embedAllQuestions.ts — seeder
-5. lib/ai/scoreAnswer.ts — full 8-step pipeline
-6. Update submit-text route to use real scoreAnswer()
+### Next Task — Week 5: Audio Pipeline
+Build in this order:
+1. useAudioRecorder.ts hook (MediaRecorder API)
+2. components/interview/AudioRecorder.tsx
+3. app/api/interview/transcribe/route.ts (Whisper)
+4. app/api/tts/route.ts (ElevenLabs)
+5. Update interview room to support audio mode
+6. Test with CA terminology accuracy
 
-IMPORTANT before Week 4:
-- Need minimum 10 questions in DB with good
-  idealAnswer and keyTerms filled
-- Verify .env has ANTHROPIC_API_KEY,
-  OPENAI_API_KEY, PINECONE_API_KEY all filled
-- Run embedAllQuestions.ts after building it
+IMPORTANT before Week 5:
+- Add Anthropic credits first
+- Test real AI feedback is working
+- Then build audio pipeline
 
 ### Critical Rules (never break these)
 1. All types only in types/index.ts
@@ -113,7 +182,9 @@ IMPORTANT before Week 4:
 5. Never expose SUPABASE_SERVICE_ROLE_KEY to client
 6. Shadcn/ui only for UI components
 7. Never hardcode API keys
-8. npm run build must pass before any session ends
+8. npm run build must pass before ending any session
+9. git pull origin main before starting every session
+10. git add . && git commit && git push after every session
 
 ---
 
