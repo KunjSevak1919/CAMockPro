@@ -1,29 +1,10 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { scoreAnswer } from "@/lib/ai/scoreAnswer";
 import type { AIFeedback, Question } from "@/types";
 
-// ── Mocked feedback (Week 3 placeholder — replaced by Claude in Week 5) ──
-
-const MOCKED_FEEDBACK: AIFeedback = {
-  score: 75,
-  grade: "Good",
-  strengths: [
-    "Demonstrated understanding of core concepts",
-    "Used appropriate CA terminology",
-  ],
-  gaps: [
-    "Could elaborate more on practical application in real audit scenarios",
-  ],
-  model_answer:
-    "A comprehensive answer covers the definition, regulatory framework under " +
-    "ICAI standards, practical application, and common exceptions that a " +
-    "CA Intermediate student should know.",
-  follow_up_question: null,
-  encouragement: "Good attempt! Your understanding of the fundamentals is solid.",
-  missing_concepts: [],
-  similarity_score: 0.75,
-};
+export const dynamic = "force-dynamic";
 
 // ── POST /api/interview/submit-text ────────────────────────
 
@@ -95,6 +76,20 @@ export async function POST(request: Request) {
     );
   }
 
+  // Fetch the full question for AI scoring
+  // Note: Prisma fields are text/expectedAnswer/keywords —
+  // mapped to ScoreInput names questionText/idealAnswer/keyTerms below.
+  const question = await prisma.question.findUnique({
+    where: { id: question_id },
+  });
+
+  if (!question) {
+    return NextResponse.json(
+      { error: "Question not found." },
+      { status: 404 }
+    );
+  }
+
   // Create the Answer record
   const answer = await prisma.answer.create({
     data: {
@@ -103,22 +98,53 @@ export async function POST(request: Request) {
     },
   });
 
-  // Create the (mocked) Score record
-  // total/accuracy/depth/terminology stored as 0–100
+  // Run real AI scoring (falls back to defaults on any error)
+  let feedback: AIFeedback;
+  try {
+    feedback = await scoreAnswer({
+      question: {
+        id: question.id,
+        questionText: question.text,          // Prisma: text
+        idealAnswer: question.expectedAnswer, // Prisma: expectedAnswer
+        keyTerms: question.keywords,          // Prisma: keywords
+        paper: question.paper,
+      },
+      answer_text: answer_text,
+    });
+  } catch (err) {
+    console.error("scoreAnswer failed:", err);
+    feedback = {
+      score: 70,
+      grade: "Good",
+      strengths: ["Answer recorded successfully"],
+      gaps: ["AI feedback temporarily unavailable"],
+      model_answer: question.expectedAnswer,
+      follow_up_question: null,
+      encouragement: "Keep practising!",
+      missing_concepts: [],
+      similarity_score: 0,
+    };
+  }
+
+  // Persist Score record using feedback values
   await prisma.score.create({
     data: {
       answerId: answer.id,
-      total: 75,
-      accuracy: 80,
-      depth: 70,
-      terminology: 75,
-      feedback: MOCKED_FEEDBACK.encouragement,
-      keyPointsCovered: [],
-      keyPointsMissed: [],
+      total: feedback.score,
+      accuracy: feedback.score,
+      depth: feedback.score,
+      terminology: feedback.score,
+      feedback: feedback.encouragement,
+      keyPointsCovered: feedback.missing_concepts.length > 0
+        ? question.keywords.filter(
+            (k) => !feedback.missing_concepts.includes(k)
+          )
+        : question.keywords,
+      keyPointsMissed: feedback.missing_concepts,
     },
   });
 
-  // Count how many questions in this session now have answers
+  // Count answers to detect session completion
   const answeredCount = await prisma.answer.count({
     where: {
       sessionQuestion: { sessionId: session_id },
@@ -127,19 +153,18 @@ export async function POST(request: Request) {
 
   const sessionComplete = answeredCount >= session.questionCount;
 
-  // If all questions answered → complete the session
   if (sessionComplete) {
     await prisma.interviewSession.update({
       where: { id: session_id },
       data: {
         status: "COMPLETED",
         completedAt: new Date(),
-        totalScore: 75.0,
+        totalScore: feedback.score,
       },
     });
   }
 
-  // Fetch the next question if provided
+  // Fetch next question if provided
   let nextQuestion: Question | null = null;
   if (next_question_id) {
     const q = await prisma.question.findUnique({
@@ -162,7 +187,7 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({
-    feedback: MOCKED_FEEDBACK,
+    feedback,
     next_question: nextQuestion,
     session_complete: sessionComplete,
   });
