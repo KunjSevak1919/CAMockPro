@@ -6,10 +6,11 @@ import type { Difficulty, Paper } from "@/types";
 // ── Auth helper ────────────────────────────────────────────
 
 function checkAdminPassword(request: Request): boolean {
-  const adminPassword = process.env.ADMIN_PASSWORD;
-  if (!adminPassword) return false;
+  const adminPasswords = process.env.ADMIN_PASSWORD;
+  if (!adminPasswords) return false;
   const provided = request.headers.get("x-admin-password");
-  return provided === adminPassword;
+  if (!provided) return false;
+  return adminPasswords.split(",").map((p) => p.trim()).includes(provided);
 }
 
 // ── GET — list all questions ───────────────────────────────
